@@ -1,0 +1,39 @@
+(function() {
+  const originalSend = XMLHttpRequest.prototype.send;
+  const responses = [];
+
+  XMLHttpRequest.prototype.send = function(...args) {
+    this.addEventListener('load', function() {
+      if (this.status >= 200 && this.status < 300) {
+        try {
+          const data = JSON.parse(this.responseText);
+          // 可根据 URL 或内容判断是否是 list 数据
+          if (Array.isArray(data) || (typeof data === 'object' && data.hasOwnProperty('list'))) {
+            responses.push({
+              url: this.responseURL,
+               data
+            });
+          }
+        } catch (e) {
+          console.warn('Non-JSON response:', this.responseURL);
+        }
+      }
+    });
+    return originalSend.apply(this, args);
+  };
+
+  // 提供一个全局函数用于导出数据
+  window.saveXhrResponses = function() {
+    const blob = new Blob([JSON.stringify(responses, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'xhr_responses.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  console.log('XHR 拦截已启用。操作完成后，在控制台运行 saveXhrResponses() 下载数据。');
+})();
+
+我想将一段时间的聊天记录梳理为指定格式，股票名称｜老师建议
